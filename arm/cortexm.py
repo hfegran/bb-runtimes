@@ -137,6 +137,159 @@ class LM3S(ArmV7MTarget):
             'src/s-textio__lm3s.adb')
 
 
+class Efm32CommonArchSupport(ArchSupport):
+    @property
+    def name(self):
+        return 'efm32'
+
+    @property
+    def parent(self):
+        return CortexMArch
+
+    @property
+    def loaders(self):
+        return ('ROM',)
+
+    def __init__(self):
+        super(Efm32CommonArchSupport, self).__init__()
+
+        self.add_linker_script('arm/silabs/efm32/common-ROM.ld', loader='ROM')
+
+        self.add_gnat_sources(
+            'arm/silabs/efm32/start-rom.S',
+            'arm/silabs/efm32/start-common.S',
+            'arm/silabs/efm32/setup_board.ads',
+            'arm/silabs/efm32/s-bbmcpa.ads')
+
+
+class Efm32(ArmV7MTarget):
+    @property
+    def name(self):
+        return self.board
+    
+    @property
+    def parent(self):
+        return Efm32CommonArchSupport
+
+    @property
+    def use_semihosting_io(self):
+        return True
+
+    @property
+    def has_single_precision_fpu(self):
+        return True
+
+    @property
+    def has_double_precision_fpu(self):
+        return False
+
+    @property
+    def cortex(self):
+        return 'cortex-m4'
+
+    @property
+    def fpu(self):
+        return 'fpv4-sp-d16'
+
+    @property
+    def system_ads(self):
+        # Use custom System package since system-xi-cortexm4 assumes
+        # 4-bit interrupt priorities, but the EFM32 only supports
+        # 3-bit interrupt priorities. This requires different
+        # definitions for Priority and Interrupt_Priority in System.
+        return {'zfp': 'system-xi-arm.ads',
+                'ravenscar-sfp': 'arm/silabs/efm32/system-xi-efm32-sfp.ads',
+                'ravenscar-full': 'arm/silabs/efm32/system-xi-efm32-full.ads'}
+
+    @property
+    def system_ads(self):
+        ret = super(Efm32, self).system_ads
+        return ret
+
+    @property
+    def compiler_switches(self):
+        base = ('-mlittle-endian', '-mthumb', '-mcpu=%s' % self.cortex)
+        return base + ('-mhard-float', '-mfpu=%s' % self.fpu, )
+
+    def __init__(self, board):
+        assert board in ('efm32gg12b'), \
+            "Unexpected EFM32 board %s" % board
+        self.board = board
+        super(Efm32, self).__init__()
+
+        self.add_linker_script('arm/silabs/efm32/memory-map_%s.ld' % self.name, 'memory-map.ld')
+
+        self.add_gnat_sources(
+            'arm/silabs/efm32/%s/i-efm32-di.ads' % self.name,
+            'arm/silabs/efm32/%s/s-bbbopa.ads' % self.name, #board parameters
+            'arm/silabs/efm32/%s/setup_board.adb' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-acmp0.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-acmp1.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-acmp2.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-adc0.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-adc1.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-can0.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-can1.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-cmu.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-cryotimer.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-crypto0.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-csen.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-ebi.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-emu.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-etm.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-fpueh.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-gpcrc.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-gpio.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-i2c0.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-i2c1.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-idac0.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-lcd.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-ldma.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-lesense.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-letimer0.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-letimer1.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-leuart0.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-leuart1.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-msc.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-pcnt0.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-pcnt1.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-pcnt2.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-pdm.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-prs.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-qspi0.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-rmu.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-rtc.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-rtcc.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-sdio.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-smu.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-timer0.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-timer1.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-timer2.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-timer3.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-trng0.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-uart0.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-uart1.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-usart0.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-usart1.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-usart2.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-usart3.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-usart4.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-usb.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-vdac0.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-wdog0.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-wdog1.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-wtimer0.ads' % self.name,
+            'arm/silabs/efm32/%s/svd/i-efm32-wtimer1.ads' % self.name)
+
+        # ravenscar support
+        self.add_gnarl_sources(
+            'src/s-bbbosu__efm32gg12b.adb',
+            'src/s-bbpara__efm32gg12b.ads',
+            'src/s-bcpcst__pendsv.adb',
+            'arm/silabs/efm32/%s/svd/handler.S' % self.name,
+            'arm/silabs/efm32/%s/svd/a-intnam.ads' % self.name)
+
 class SamCommonArchSupport(ArchSupport):
     @property
     def name(self):
